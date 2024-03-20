@@ -1,47 +1,33 @@
 package xguard
 
 import (
-	"net"
+	"fmt"
+	"gihub.com/ares0516/xguard/route"
 	"sync"
 	"time"
 )
 
-type Rule struct {
-	subnet net.IPNet
-	gw     net.IP
-	ifName string
-	ifIdx  uint32
-}
-
 type XGuard struct {
 	mu        sync.Mutex
-	guardList []Rule
+	lastList  []route.CommonRouteItem // 上一次的路由表
+	guardList []route.CommonRouteItem // 需要保护的路由表
 }
 
 func NewXGuard() *XGuard {
 	return &XGuard{}
 }
 
-func (x *XGuard) AddRule(subnet string, gw string, ifName string, ifIdx uint32) {
+func (x *XGuard) AddRule(itemList []route.CommonRouteItem) {
 	x.mu.Lock()
 	defer x.mu.Unlock()
 
-	_, subnet, _ = net.ParseCIDR(subnet)
-	gw := net.ParseIP(gw)
-	x.guardList = append(x.guardList, Rule{subnet: *subnet, gw: gw, ifName: ifName, ifIdx: ifIdx})
+	x.guardList = append(x.guardList, itemList...)
 }
 
 func (x *XGuard) DelRule(subnet string) {
 	x.mu.Lock()
 	defer x.mu.Unlock()
 
-	_, subnet, _ = net.ParseCIDR(subnet)
-	for i, rule := range x.guardList {
-		if rule.subnet.String() == subnet.String() {
-			x.guardList = append(x.guardList[:i], x.guardList[i+1:]...)
-			break
-		}
-	}
 }
 
 func (x *XGuard) CleanRule() {
@@ -54,8 +40,25 @@ func (x *XGuard) CleanRule() {
 func (x *XGuard) Start() {
 	go func() {
 		for {
+			tmplist, err := route.GetRouteList()
+			if err != nil {
+				time.Sleep(1 * time.Second)
+				continue
+			}
+			// 获取存在于guardList但不存在于tmplist的路由
+			var routeTable route.CommonRouteTable
+			for _, r := range x.guardList {
+				found := false
+				if tmplist.Contains(r) {
+					found = true // 当前被保护条目存在，不处理
+				}
+				if !found { // 当前被保护条目不存在，添加路由
+					fmt.Println("Add route:", r)
+					routeTable.Items = append(routeTable.Items, r)
+				}
+			}
+			route.SetRouteList(&routeTable)
 			time.Sleep(5 * time.Second)
-
 		}
 	}()
 }

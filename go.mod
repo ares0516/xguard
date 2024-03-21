@@ -1,6 +1,6 @@
 module github.com/ares0516/xguard
 
-go 1.21.1
+go 1.20
 
 require (
 	github.com/StackExchange/wmi v1.2.1

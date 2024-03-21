@@ -32,8 +32,12 @@ type Win32_IP4RouteTable struct {
 // eg. route ADD 157.0.0.0 MASK 255.0.0.0  157.55.80.1 METRIC 3 IF 2
 
 func setRouteList(routeTable *CommonRouteTable) error {
+	baseMetric := routeTable.DefaultMetric
+	fmt.Println("baseMetric:", baseMetric)
 	for _, item := range routeTable.Items {
-		cmd := exec.Command("route", "add", item.Destination, "mask", item.Mask, item.Destination, "metric", strconv.Itoa(item.Metric), "if", strconv.Itoa(item.InterfaceIndex))
+		metricOffset := item.Metric - baseMetric
+		fmt.Println("metricOffset:", metricOffset)
+		cmd := exec.Command("route", "add", item.Destination, "mask", item.Mask, item.NextHop, "metric", strconv.Itoa(metricOffset), "if", strconv.Itoa(item.InterfaceIndex))
 		cmd.SysProcAttr = &syscall.SysProcAttr{HideWindow: true}
 		out, err := cmd.CombinedOutput()
 		if err != nil {
@@ -45,8 +49,8 @@ func setRouteList(routeTable *CommonRouteTable) error {
 	return nil
 }
 
-func getRouteList() ([]CommonRouteItem, error) {
-	var commonRoutes []CommonRouteItem
+func getIPv4RouteTable() (*CommonRouteTable, error) {
+	routeTable := new(CommonRouteTable)
 	var win32Routes []Win32_IP4RouteTable
 	query := "SELECT * FROM Win32_IP4RouteTable"
 	err := wmi.Query(query, &win32Routes)
@@ -55,6 +59,8 @@ func getRouteList() ([]CommonRouteItem, error) {
 		return nil, err
 	}
 
+	fmt.Println(">>>>>>>>>>>>>>>>>>>>>>> 0")
+	baseMetric := 500
 	for _, route := range win32Routes {
 		//fmt.Printf("%s/%s  [%s]\n", route.Destination, route.Mask, route.Status)
 		//fmt.Printf("Metrics: %d %d %d %d\n", route.Metric1, route.Metric2, route.Metric3, route.Metric4)
@@ -64,12 +70,20 @@ func getRouteList() ([]CommonRouteItem, error) {
 
 		//fmt.Printf(" %s %s %s %d %d\n", route.Destination, route.Mask, route.NextHop, route.InterfaceIndex, route.Metric1)
 		var routeItem CommonRouteItem
+
 		routeItem.Destination = route.Destination
 		routeItem.Mask = route.Mask
 		routeItem.NextHop = route.NextHop
 		routeItem.InterfaceIndex = route.InterfaceIndex
 		routeItem.Metric = route.Metric1
-		commonRoutes = append(commonRoutes, routeItem)
+		if route.Metric1 < baseMetric {
+			baseMetric = route.Metric1
+		}
+		routeTable.Items = append(routeTable.Items, routeItem)
+
 	}
-	return commonRoutes, nil
+	fmt.Println(">>>>>>>>>>>>>>>>>>>>>>> 1")
+	routeTable.DefaultMetric = baseMetric
+	fmt.Println("routeTable.DefaultMetric:", routeTable.DefaultMetric)
+	return routeTable, nil
 }

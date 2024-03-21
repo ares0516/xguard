@@ -23,13 +23,11 @@ func (cr *CommonRouteTable) Contains(item CommonRouteItem) bool {
 	return false
 }
 
-func GetRouteList() (CommonRouteTable, error) {
-	var routeTable CommonRouteTable
-	routeList, err := getRouteList()
+func GetRouteTable() (*CommonRouteTable, error) {
+	routeTable, err := getIPv4RouteTable()
 	if err != nil {
-		return CommonRouteTable{}, err
+		return nil, err
 	}
-	routeTable.Items = append(routeTable.Items, routeList...)
 	return routeTable, nil
 }
 

@@ -40,16 +40,17 @@ func (x *XGuard) CleanRule() {
 func (x *XGuard) Start() {
 	go func() {
 		for {
-			tmplist, err := route.GetRouteList()
+			tmpRouteTable, err := route.GetRouteTable()
 			if err != nil {
 				time.Sleep(1 * time.Second)
 				continue
 			}
+			fmt.Println("DefaultMetric:", tmpRouteTable.DefaultMetric)
 			// 获取存在于guardList但不存在于tmplist的路由
 			var routeTable route.CommonRouteTable
 			for _, r := range x.guardList {
 				found := false
-				if tmplist.Contains(r) {
+				if tmpRouteTable.Contains(r) {
 					found = true // 当前被保护条目存在，不处理
 				}
 				if !found { // 当前被保护条目不存在，添加路由
@@ -57,6 +58,7 @@ func (x *XGuard) Start() {
 					routeTable.Items = append(routeTable.Items, r)
 				}
 			}
+			routeTable.DefaultMetric = tmpRouteTable.DefaultMetric
 			route.SetRouteList(&routeTable)
 			time.Sleep(5 * time.Second)
 		}

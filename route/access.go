@@ -16,7 +16,7 @@ type CommonRouteItem struct {
 // Contains checks if the route table contains the given route item
 func (cr *CommonRouteTable) Contains(item CommonRouteItem) bool {
 	for _, i := range cr.Items {
-		if i.Destination == item.Destination && i.Mask == item.Mask && i.NextHop == item.NextHop && i.InterfaceIndex == item.InterfaceIndex {
+		if i == item {
 			return true
 		}
 	}

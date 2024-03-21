@@ -1,7 +1,7 @@
 package xguard
 
 import (
-	"gihub.com/ares0516/xguard/route"
+	"github.com/ares0516/xguard/route"
 	"os"
 	"os/signal"
 	"syscall"

@@ -2,7 +2,7 @@ package xguard
 
 import (
 	"fmt"
-	"gihub.com/ares0516/xguard/route"
+	"github.com/ares0516/xguard/route"
 	"sync"
 	"time"
 )
